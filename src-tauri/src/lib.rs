@@ -1,6 +1,7 @@
 use tauri::{
     Manager,
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    State,
 };
 
 struct AppTray{
@@ -11,6 +12,11 @@ struct AppTray{
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
+#[tauri::command]
+fn set_tray_title(tray: State<AppTray>, title: &str) {
+    let _ = tray.inner()._tray.set_title(Some(title.to_string()));
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -83,7 +89,7 @@ pub fn run() {
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![greet, set_tray_title])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

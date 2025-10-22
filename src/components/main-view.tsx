@@ -3,7 +3,6 @@
 import { ShortcutText } from './shortcut-text'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Timer } from '@/hooks/use-timer'
 import { cn } from '@/lib/utils'
 import { CircleQuestionMarkIcon, PlayIcon } from 'lucide-react'
 import React from 'react'
@@ -42,15 +41,15 @@ const TimeButton: React.FC<{
 
 export const MainView: React.FC<{
   totalMinutes: number
-  setTimer: (timer: Timer[]) => void
-}> = ({ totalMinutes, setTimer }) => {
+  onStart: (minutes: number, mode: 'focus' | 'rest') => void
+}> = ({ totalMinutes, onStart }) => {
   const totalHours = Math.floor(totalMinutes / 60)
   const remainingMinutes = totalMinutes % 60
   const formattedHours = totalHours.toString().padStart(2, '0')
   const formattedMinutes = remainingMinutes.toString().padStart(2, '0')
 
   // 共通のプリセット定義
-  const presets: Record<string, Timer[]> = React.useMemo(
+  const presets: Record<string, { mode: 'focus' | 'rest'; minutes: number }[]> = React.useMemo(
     () => ({
       '1': [
         { mode: 'focus', minutes: 5 },
@@ -91,7 +90,7 @@ export const MainView: React.FC<{
       }
 
       event.preventDefault()
-      setTimer(timers)
+      onStart(timers[0].minutes, timers[0].mode)
     }
 
     window.addEventListener('keydown', handleKeyDown)
@@ -99,7 +98,7 @@ export const MainView: React.FC<{
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [setTimer, presets])
+  }, [onStart, presets])
 
   return (
     <TimerLayout className="flex flex-col">
@@ -136,26 +135,26 @@ export const MainView: React.FC<{
             minutes={5}
             shortcut="⌘ + 1"
             className="bg-emerald-300"
-            onClick={() => setTimer(presets['1'])}
+            onClick={() => onStart(presets['1'][0].minutes, presets['1'][0].mode)}
           />
           <TimeButton
             minutes={15}
             shortcut="⌘ + 2"
             className="bg-emerald-500"
-            onClick={() => setTimer(presets['2'])}
+            onClick={() => onStart(presets['2'][0].minutes, presets['2'][0].mode)}
           />
 
           <TimeButton
             minutes={30}
             shortcut="⌘ + 3"
             className="bg-emerald-700"
-            onClick={() => setTimer(presets['3'])}
+            onClick={() => onStart(presets['3'][0].minutes, presets['3'][0].mode)}
           />
           <TimeButton
             minutes={60}
             shortcut="⌘ + 4"
             className="bg-emerald-900"
-            onClick={() => setTimer(presets['4'])}
+            onClick={() => onStart(presets['4'][0].minutes, presets['4'][0].mode)}
           />
         </div>
       </div>

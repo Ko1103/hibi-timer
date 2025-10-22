@@ -2,59 +2,52 @@
 
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Timer } from '@/hooks/use-timer'
 import { cn } from '@/lib/utils'
-import {
-  CircleDotIcon,
-  CoffeeIcon,
-  PauseIcon,
-  PlayIcon,
-  SkipForwardIcon,
-  XIcon,
-} from 'lucide-react'
-import React, { useCallback, useEffect, useState } from 'react'
+import { CircleDotIcon, CoffeeIcon, PauseIcon, PlayIcon, XIcon } from 'lucide-react'
+import React, { useCallback, useEffect } from 'react'
 import { ShortcutText } from './shortcut-text'
 
 const noop = () => {}
 
 export const CountdownTimer: React.FC<{
-  timer: Timer
-  nextTimer?: Timer
+  view: 'focus' | 'rest'
+  isRunning: boolean
+  remainingSeconds: number
+  onPause: () => void
+  onResume: () => void
   onComplete: () => void
   onCancel: () => void
-  onSkip: () => void
-}> = ({ timer, onComplete, onCancel, nextTimer, onSkip }) => {
-  const [timeLeft, setTimeLeft] = useState(timer.minutes * 60)
-  const [isRunning, setIsRunning] = useState(true)
-  const isFocus = timer.mode === 'focus'
-
-  useEffect(() => {
-    setTimeLeft(timer.minutes * 60)
-    setIsRunning(timer.mode !== 'rest')
-  }, [timer.minutes, timer.mode])
+  updateRemainingSeconds: (seconds: number) => void
+}> = ({
+  view,
+  isRunning,
+  remainingSeconds,
+  onPause,
+  onResume,
+  onComplete,
+  onCancel,
+  updateRemainingSeconds,
+}) => {
+  const isFocus = view === 'focus'
 
   useEffect(() => {
     if (!isRunning) {
       return noop
     }
 
-    if (timeLeft <= 0) {
-      setIsRunning(false)
+    if (remainingSeconds <= 0) {
       onComplete()
       return noop
     }
 
     const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        const next = prev - 60
-        return next > 0 ? next : 0
-      })
+      updateRemainingSeconds(remainingSeconds - 1)
     }, 1000)
 
     return () => {
       clearInterval(interval)
     }
-  }, [isRunning, timeLeft, onComplete, timer.minutes, timer.mode])
+  }, [isRunning, remainingSeconds, onComplete, updateRemainingSeconds])
 
   const formatTime = useCallback((seconds: number) => {
     const hours = Math.floor(seconds / 3600)
@@ -69,16 +62,12 @@ export const CountdownTimer: React.FC<{
   }, [onCancel])
 
   const handlePause = useCallback(() => {
-    setIsRunning((prev) => !prev)
-  }, [])
-
-  const handleSkip = useCallback(() => {
-    if (timer.mode !== 'rest') {
-      return
+    if (isRunning) {
+      onPause()
+    } else {
+      onResume()
     }
-
-    onSkip()
-  }, [onSkip, timer.mode])
+  }, [])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -104,11 +93,6 @@ export const CountdownTimer: React.FC<{
         handlePause()
         return
       }
-
-      if (isSkip) {
-        event.preventDefault()
-        handleSkip()
-      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
@@ -116,7 +100,7 @@ export const CountdownTimer: React.FC<{
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [handleConfirmCancel, handlePause, handleSkip])
+  }, [handleConfirmCancel, handlePause])
 
   return (
     <div
@@ -146,7 +130,7 @@ export const CountdownTimer: React.FC<{
           </TooltipContent>
         </Tooltip>
 
-        {timer.mode === 'rest' && (
+        {/* {timer.mode === 'rest' && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -165,7 +149,7 @@ export const CountdownTimer: React.FC<{
               Skip <ShortcutText text="⌘ + →" />
             </TooltipContent>
           </Tooltip>
-        )}
+        )} */}
       </div>
 
       <main className="flex-1 overflow-y-auto">
@@ -199,7 +183,7 @@ export const CountdownTimer: React.FC<{
                     isFocus ? 'text-foreground' : 'text-muted'
                   )}
                 >
-                  {formatTime(timeLeft)}
+                  {formatTime(remainingSeconds)}
                 </span>
               </div>
             </div>
@@ -219,17 +203,7 @@ export const CountdownTimer: React.FC<{
         </div>
       </main>
 
-      <footer className="w-full px-3 py-2">
-        {nextTimer && (
-          <div
-            className={cn('text-right text-sm', isFocus ? 'text-muted-foreground' : 'text-muted')}
-          >
-            {nextTimer.mode === 'rest'
-              ? `Let's take a break for ${nextTimer?.minutes} minutes`
-              : `Focus for ${nextTimer?.minutes} minutes`}
-          </div>
-        )}
-      </footer>
+      <footer className="w-full px-3 py-2"></footer>
     </div>
   )
 }

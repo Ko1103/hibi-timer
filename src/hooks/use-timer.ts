@@ -1,133 +1,86 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
-import { setTrayDisplay } from '@/lib/tray'
+import { useState } from 'react'
 
 // const electron =
 //   typeof window !== 'undefined' && window.electron ? window.electron : null;
 
-export type TimerMode = 'focus' | 'rest'
+export type TimerMode = 'focus' | 'rest' | 'select'
 
-export type Timer = {
+export type TimerSet = {
   mode: TimerMode
   minutes: number
 }
 
-type TimerStatus = {
-  secondsLeft: number
-  running: boolean
-}
-
 export function useTimer() {
-  // タイマーのリスト
-  const [timers, setTimers] = useState<Timer[]>([])
   // 1日の合計時間(分)
+  const [view, setView] = useState<'select' | 'focus' | 'rest'>('select')
   const [totalMinutes, setTotalMinutes] = useState(0)
-  // 目標時間(時間)
-  const [goalHours, setGoalHours] = useState<number | null>(null)
-  const remainingGoalHours = goalHours ? goalHours - totalMinutes / 60 : null
-  const [status, setStatus] = useState<TimerStatus>({ secondsLeft: 0, running: false })
-  const statusRef = useRef(status)
+  // 実行中の時間(分)
+  const [runningMinutes, setRunningMinutes] = useState(0)
+  const [remainingSeconds, setRemainingSeconds] = useState(0)
+  const [running, setRunning] = useState(false)
 
-  const updateTray = useCallback((next: TimerStatus) => {
-    statusRef.current = next
-    setStatus(next)
+  // タイマーの開始（フォーカスか休憩)
+  const start = (minutes: number, mode: 'focus' | 'rest') => {
+    setView(mode)
 
-    if (!next.running || next.secondsLeft <= 0) {
-      setTrayDisplay('--:--')
-      return
-    }
-
-    const minutes = Math.floor(next.secondsLeft / 60)
-    const seconds = next.secondsLeft % 60
-    const label = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-    setTrayDisplay(label)
-  }, [])
-
-  // タイマーをセットする（複数も可能)
-  const setTimer = (timerSets: Timer[]) => {
-    setTimers(timerSets)
-    if (timerSets.length === 0) {
-      updateTray({ secondsLeft: 0, running: false })
-    }
-  }
-
-  // タイマーを終了
-  const onFinish = () => {
-    const first = timers[0] ?? null
-    if (first === null) return
-
-    // 合計時間を更新
-    let minutes = first.minutes ?? 0
-    if (first.mode === 'rest') {
-      minutes = 0
-    }
-    setTotalMinutes((prev) => prev + minutes)
-
-    // 次のタイマーをセット
-    if (timers.length > 0) {
-      const nextTimers = timers.slice(1)
-      setTimer(nextTimers)
-    } else {
-      setTimer([])
-    }
-
-    updateTray({ secondsLeft: 0, running: false })
-  }
-
-  // キャンセル
-  const cancel = () => {
-    setTimers([])
-    updateTray({ secondsLeft: 0, running: false })
+    // タイマーの初期設定
+    setRunningMinutes(minutes)
+    setRemainingSeconds(minutes * 60)
+    setRunning(true)
   }
 
   // 一時停止
   const pause = () => {
-    // 何もしない
+    setRunning(false)
   }
 
-  const setGoal = (hours: number) => {
-    setGoalHours(hours)
+  // 再開
+  const resume = () => {
+    setRunning(true)
   }
 
-  // 休憩をスキップして次のタイマーを開始
-  const skipRest = () => {
-    const first = timers[0]
-    if (first.mode === 'rest') {
-      const nextTimers = timers.slice(1)
-      if (nextTimers.length > 0) {
-        setTimer(nextTimers)
-      } else {
-        setTimer([])
-      }
+  // キャンセル
+  const cancel = () => {
+    setView('select')
+    // 途中までの時間を合計時間に加算
+    if (view === 'focus') {
+      const focusedMinutes = runningMinutes - Math.floor(remainingSeconds / 60)
+      setTotalMinutes(totalMinutes + focusedMinutes)
     }
+    _resetRunning()
   }
 
-  const setActiveTimerState = useCallback(
-    (seconds: number, running: boolean) => {
-      updateTray({ secondsLeft: seconds, running })
-    },
-    [updateTray]
-  )
+  const complete = () => {
+    // 合計時間を更新
+    if (view === 'focus') {
+      setTotalMinutes(totalMinutes + runningMinutes)
+    }
+    setView('select')
 
-  const derived = useMemo(
-    () => ({
-      secondsLeft: status.secondsLeft,
-      running: status.running,
-    }),
-    [status]
-  )
+    _resetRunning()
+  }
+
+  const _resetRunning = () => {
+    setRunning(false)
+    setRunningMinutes(0)
+    setRemainingSeconds(0)
+  }
+
+  const updateRemainingSeconds = (seconds: number) => {
+    setRemainingSeconds(seconds)
+  }
 
   return {
-    timers,
+    view,
     totalMinutes,
-    goalHours,
-    remainingGoalHours,
-    onFinish,
-    setTimer,
-    cancel,
+    runningMinutes,
+    remainingSeconds,
+    running,
+    start,
     pause,
-    setGoal,
-    skipRest,
-    setActiveTimerState,
-    timerStatus: derived,
+    resume,
+    cancel,
+    complete,
+    updateRemainingSeconds,
   }
 }
