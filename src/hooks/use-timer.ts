@@ -1,3 +1,4 @@
+import { showWindow } from '@/lib/window'
 import { useState } from 'react'
 
 // const electron =
@@ -56,8 +57,9 @@ export function useTimer() {
       setTotalMinutes(totalMinutes + runningMinutes)
     }
     setView('select')
-
     _resetRunning()
+
+    showWindow().then(() => {})
   }
 
   const _resetRunning = () => {

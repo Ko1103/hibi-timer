@@ -19,6 +19,16 @@ fn set_tray_title(tray: State<AppTray>, title: &str) {
     let _ = tray.inner()._tray.set_title(Some(title.to_string()));
 }
 
+#[tauri::command]
+fn show_window(app_handle: tauri::AppHandle) {
+    if let Some(window) = app_handle.get_webview_window("main") {
+        // 表示されていない場合、表示してフォーカス
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -89,7 +99,7 @@ pub fn run() {
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, set_tray_title])
+        .invoke_handler(tauri::generate_handler![greet, set_tray_title, show_window])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
