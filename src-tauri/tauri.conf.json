@@ -36,8 +36,7 @@
     },
     "windows": {
       "nsis": {
-        "installerIcon": "icons/icon.ico",
-        "allowToChangeInstallationDirectory": true
+        "installerHooks": "./windows/hooks.nsh"
       }
     }
   }
