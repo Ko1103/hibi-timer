@@ -8,6 +8,7 @@ import { CircleQuestionMarkIcon, PlayIcon, RotateCcwIcon } from 'lucide-react'
 import React from 'react'
 import { TimerLayout } from './timer-layout'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
+import { timeToStr } from '@/lib/time'
 
 const TimeButton: React.FC<{
   minutes: number
@@ -43,11 +44,6 @@ export const MainView: React.FC<{
   onStart: (minutes: number, mode: 'focus' | 'rest') => void
   onReset: () => void
 }> = ({ totalMinutes, onStart, onReset }) => {
-  const totalHours = Math.floor(totalMinutes / 60)
-  const remainingMinutes = totalMinutes % 60
-  const formattedHours = totalHours.toString().padStart(2, '0')
-  const formattedMinutes = remainingMinutes.toString().padStart(2, '0')
-
   // 共通のプリセット定義
   const presets: Record<string, { mode: 'focus' | 'rest'; minutes: number }[]> = React.useMemo(
     () => ({
@@ -121,8 +117,6 @@ export const MainView: React.FC<{
               <ShortcutText text="⌘ + number" />
               <div>Pause/Resume</div>
               <ShortcutText text="Space" />
-              <div>Skip</div>
-              <ShortcutText text="⌘ + →" />
               <div>Cancel</div>
               <ShortcutText text="Esc" />
             </div>
@@ -131,11 +125,9 @@ export const MainView: React.FC<{
       </div>
 
       <div className="flex-1 flex flex-col gap-12 px-4 pt-10">
-        <div className="flex items-center justify-center gap-2">
-          <span className="text-3xl">Total </span>
-          <span className="text-3xl font-mono font-semibold">
-            {formattedHours}:{formattedMinutes}
-          </span>
+        <div className="text-center">
+          <span className="text-xl">Total </span>
+          <span className="text-3xl">{timeToStr(totalMinutes * 60)}</span>
           <Button size="icon" variant="ghost" onClick={() => onReset()}>
             <RotateCcwIcon className="size-4" />
           </Button>

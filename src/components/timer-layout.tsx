@@ -6,7 +6,7 @@ export const TimerLayout: React.FC<{
   className?: string
 }> = ({ children, className }) => {
   return (
-    <div className={cn('min-h-screen w-full max-w-md mx-auto bg-background', className)}>
+    <div className={cn('min-h-screen w-full max-w-md mx-auto bg-background font-mono', className)}>
       {children}
     </div>
   )

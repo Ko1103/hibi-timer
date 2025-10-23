@@ -4,7 +4,7 @@ import { useState } from 'react'
 // const electron =
 //   typeof window !== 'undefined' && window.electron ? window.electron : null;
 
-export type TimerMode = 'focus' | 'rest' | 'select'
+export type TimerMode = 'focus' | 'rest' | 'select' | 'complete'
 
 export type TimerSet = {
   mode: TimerMode
@@ -13,12 +13,16 @@ export type TimerSet = {
 
 export function useTimer() {
   // 1日の合計時間(分)
-  const [view, setView] = useState<'select' | 'focus' | 'rest'>('select')
+  const [view, setView] = useState<TimerMode>('select')
   const [totalMinutes, setTotalMinutes] = useState(0)
   // 実行中の時間(分)
   const [runningMinutes, setRunningMinutes] = useState(0)
+  // 残り時間(秒)
   const [remainingSeconds, setRemainingSeconds] = useState(0)
   const [running, setRunning] = useState(false)
+
+  // 最後に完了した時間(分)
+  const [lastCompletedMinutes, setLastCompletedMinutes] = useState(0)
 
   // タイマーの開始（フォーカスか休憩)
   const start = (minutes: number, mode: 'focus' | 'rest') => {
@@ -43,11 +47,6 @@ export function useTimer() {
   // キャンセル
   const cancel = () => {
     setView('select')
-    // 途中までの時間を合計時間に加算
-    if (view === 'focus') {
-      const focusedMinutes = runningMinutes - Math.floor(remainingSeconds / 60)
-      setTotalMinutes(totalMinutes + focusedMinutes)
-    }
     _resetRunning()
   }
 
@@ -55,8 +54,12 @@ export function useTimer() {
     // 合計時間を更新
     if (view === 'focus') {
       setTotalMinutes(totalMinutes + runningMinutes)
+      setLastCompletedMinutes(runningMinutes)
+      setView('complete')
+    } else if (view === 'rest') {
+      setView('select')
     }
-    setView('select')
+
     _resetRunning()
 
     showWindow().then(() => {})
@@ -72,14 +75,29 @@ export function useTimer() {
     setRemainingSeconds(seconds)
   }
 
-  //　合計時間をリセット
+  // 合計時間をリセット
   const reset = () => {
     setTotalMinutes(0)
+  }
+
+  // 継続して頑張る
+  const keepWorking = () => {
+    setView('select')
+  }
+
+  const takeABreak = () => {
+    setView('rest')
+
+    const restMinutes = 5
+    setRunningMinutes(restMinutes)
+    setRemainingSeconds(restMinutes * 60)
+    setRunning(true)
   }
 
   return {
     view,
     totalMinutes,
+    lastCompletedMinutes,
     runningMinutes,
     remainingSeconds,
     running,
@@ -90,5 +108,7 @@ export function useTimer() {
     complete,
     updateRemainingSeconds,
     reset,
+    keepWorking,
+    takeABreak,
   }
 }
