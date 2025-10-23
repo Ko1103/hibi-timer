@@ -4,7 +4,7 @@ import { ShortcutText } from './shortcut-text'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { CircleQuestionMarkIcon, PlayIcon, RotateCcwIcon } from 'lucide-react'
+import { CircleQuestionMarkIcon, PlayIcon, RotateCcwIcon, XIcon } from 'lucide-react'
 import React from 'react'
 import { TimerLayout } from './timer-layout'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
@@ -107,18 +107,32 @@ export const MainView: React.FC<{
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle className="text-base">Keyboard Shortcuts</DialogTitle>
+              <DialogTitle className="text-base">Help</DialogTitle>
             </DialogHeader>
 
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div>Show/Hide</div>
-              <ShortcutText text="⌘ + E" />
-              <div>Start timer</div>
-              <ShortcutText text="⌘ + number" />
-              <div>Pause/Resume</div>
-              <ShortcutText text="Space" />
-              <div>Cancel</div>
-              <ShortcutText text="⌘ + ." />
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <div>Keyboard Shortcuts</div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>Show/Hide</div>
+                  <ShortcutText text="⌘ + E" />
+                  <div>Start timer</div>
+                  <ShortcutText text="⌘ + number" />
+                  <div>Pause/Resume</div>
+                  <ShortcutText text="Space" />
+                  <div>Cancel</div>
+                  <ShortcutText text="⌘ + ." />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div>Contact</div>
+                <div className="flex items-center gap-4">
+                  <a href="https://x.com/Michealko7" target="_blank" rel="noopener noreferrer">
+                    <XIcon className="size-4" />
+                  </a>
+                </div>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
