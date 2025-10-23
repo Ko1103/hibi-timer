@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main # 好みで tag トリガにもできます（tauri v2公式ガイド参照）
+      - main
 
 jobs:
   publish-tauri:
@@ -18,15 +18,14 @@ jobs:
             args: "--target aarch64-apple-darwin"
           - platform: macos-latest
             args: "--target x86_64-apple-darwin"
-          # Windows / Linux は必要なら追加
+          - platform: windows-latest
+            args: "" # 既定の x86_64-pc-windows-msvc をビルド
     runs-on: ${{ matrix.platform }}
 
     env:
-      # 公証（App Store Connect API 経由）
       APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
       APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-      # tauri-bundler は notarytool を内部で呼びます。API鍵の渡し方は下の step を参照。:contentReference[oaicite:6]{index=6}
 
     steps:
       - uses: actions/checkout@v4
@@ -40,6 +39,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
+          # mac のみクロスターゲット指定（Windows は既定でOK）
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Rust cache
@@ -50,8 +50,9 @@ jobs:
       - name: Install frontend deps
         run: npm ci
 
-      # --- Apple 証明書をキーチェーンに取り込み（署名用） ---
+      # --- macOS: 証明書をキーチェーンに取り込み（署名用） ---
       - name: Import Apple Developer Certificate
+        if: matrix.platform == 'macos-latest'
         shell: bash
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
@@ -65,35 +66,52 @@ jobs:
           security set-keychain-settings -t 3600 -u build.keychain
           security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
-          # 探して最初に出た Developer ID を署名 ID として書き出し
           CERT_ID=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application" | head -n1 | awk -F'"' '{print $2}')
           echo "APPLE_SIGNING_IDENTITY=$CERT_ID" >> $GITHUB_ENV
 
-      # --- 公証用 API Key ファイルを作る（notarytool が読む） ---
+      # --- macOS: 公証に使う API Key ファイルを作成 ---
       - name: Write App Store Connect API key
+        if: matrix.platform == 'macos-latest'
         shell: bash
         env:
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
         run: |
-          # .p8 の中身をファイル化
           echo "$APPLE_API_KEY" > AuthKey_${{ secrets.APPLE_API_KEY_ID }}.p8
           echo "APPLE_API_KEY_PATH=$PWD/AuthKey_${{ secrets.APPLE_API_KEY_ID }}.p8" >> $GITHUB_ENV
+
+      # --- ✅ Windows: 証明書（PFX）をインポートして署名に備える ---
+      - name: Import Windows Code Signing Certificate
+        if: matrix.platform == 'windows-latest' && env.WINDOWS_CERTIFICATE != ''
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          New-Item -ItemType Directory -Path certificate | Out-Null
+          Set-Content -Path certificate\tempCert.txt -Value $env:WINDOWS_CERTIFICATE
+          certutil -f -decode certificate\tempCert.txt certificate\codesign.pfx
+          Remove-Item certificate\tempCert.txt
+          $sec = ConvertTo-SecureString -String $env:WINDOWS_CERTIFICATE_PASSWORD -Force -AsPlainText
+          Import-PfxCertificate -FilePath certificate\codesign.pfx -CertStoreLocation Cert:\CurrentUser\My -Password $sec | Out-Null
 
       # --- ビルド＆リリース作成＆アセットアップロード（公式 tauri-action） ---
       - name: Build & Release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # 署名
+
+          # mac 署名・公証
           APPLE_SIGNING_IDENTITY: ${{ env.APPLE_SIGNING_IDENTITY }}
-          # 公証（API経由）
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_ID }} # ← Key ID
-          APPLE_API_KEY_PATH: ${{ env.APPLE_API_KEY_PATH }} # ← .p8 ファイルパス
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_ID }} # Key ID
+          APPLE_API_KEY_PATH: ${{ env.APPLE_API_KEY_PATH }} # .p8 パス
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+          # （オプション）Updater 署名を使う場合は以下も設定
+          # TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          # TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           args: ${{ matrix.args }}
-          # GitHub Release の生成＆アップロード設定
           tagName: app-v__VERSION__
           releaseName: "HibiFocus v__VERSION__"
           releaseBody: "Assets からダウンロードしてください。"
