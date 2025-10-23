@@ -7,7 +7,7 @@ export const TimerLayout: React.FC<{
   className?: string
 }> = ({ children, className }) => {
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <div
         className={cn('min-h-screen w-full max-w-md mx-auto bg-background font-mono', className)}
       >
