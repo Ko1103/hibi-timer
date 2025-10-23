@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import { CircleDotIcon, CoffeeIcon, PauseIcon, PlayIcon, XIcon } from 'lucide-react'
 import React, { useCallback, useEffect } from 'react'
 import { ShortcutText } from './shortcut-text'
-import { timeToStr } from '@/lib/time'
+import { formatTime, timeToStr } from '@/lib/time'
 
 const noop = () => {}
 
@@ -51,14 +51,6 @@ export const CountdownTimer: React.FC<{
       clearInterval(interval)
     }
   }, [isRunning, remainingSeconds, onComplete, updateRemainingSeconds])
-
-  const formatTime = useCallback((seconds: number) => {
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    const secs = seconds % 60
-
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
-  }, [])
 
   const handleConfirmCancel = useCallback(() => {
     onCancel()
@@ -134,39 +126,36 @@ export const CountdownTimer: React.FC<{
       </div>
 
       <main className="flex-1">
-        <div className="flex flex-col gap-4 px-4 mt-15">
-          <div
-            className={cn(
-              'flex items-center justify-center gap-2 text-center text-lg text-muted-foreground',
-              isFocus ? 'text-muted-foreground' : 'text-muted'
-            )}
-          >
-            {isFocus ? (
-              <>
-                <span>Focus</span>
-                <CircleDotIcon className="size-6" />
-              </>
-            ) : (
-              <>
-                <span>Let&apos;s take a break</span>
-                <CoffeeIcon className="size-6" />
-              </>
-            )}
-          </div>
-          <div className="w-full">
-            <div className="flex flex-col items-center gap-8">
-              {/* Timer Display */}
-              {/* Time Text */}
-              <div className="flex items-center justify-center">
-                <span
-                  className={cn(
-                    'font-mono text-4xl font-bold tracking-wider text-foreground tabular-nums',
-                    isFocus ? 'text-foreground' : 'text-muted'
-                  )}
-                >
-                  {formatTime(remainingSeconds)}
-                </span>
-              </div>
+        <div className="flex flex-col gap-8 px-4 mt-15">
+          <div className="space-y-2">
+            <div
+              className={cn(
+                'flex items-center justify-center gap-2 text-center text-lg text-muted-foreground',
+                isFocus ? 'text-muted-foreground' : 'text-muted'
+              )}
+            >
+              {isFocus ? (
+                <>
+                  <span>Focus</span>
+                  <CircleDotIcon className="size-6" />
+                </>
+              ) : (
+                <>
+                  <span>Let&apos;s take a break</span>
+                  <CoffeeIcon className="size-6" />
+                </>
+              )}
+            </div>
+            {/* Timer Display */}
+            <div className="flex items-center justify-center">
+              <span
+                className={cn(
+                  'font-mono text-5xl font-bold tracking-wider text-foreground tabular-nums',
+                  isFocus ? 'text-foreground' : 'text-muted'
+                )}
+              >
+                {formatTime(remainingSeconds)}
+              </span>
             </div>
           </div>
           <div className="text-center">
