@@ -14,8 +14,10 @@
       {
         "title": "hibi-timer",
         "width": 448,
-        "height": 400,
+        "minWidth": 448,
         "maxWidth": 448,
+        "height": 400,
+        "minHeight": 400,
         "maxHeight": 400
       }
     ],

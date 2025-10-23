@@ -44,7 +44,7 @@ export const CountdownTimer: React.FC<{
     }
 
     const interval = setInterval(() => {
-      updateRemainingSeconds(remainingSeconds - 1)
+      updateRemainingSeconds(remainingSeconds - 60)
     }, 1000)
 
     return () => {
@@ -71,15 +71,16 @@ export const CountdownTimer: React.FC<{
       }
 
       const isSpace = event.code === 'Space' || event.key === ' '
-      const isEscape = event.key === 'Escape' || event.code === 'Escape'
-      const isSkip = event.metaKey && (event.key === 'ArrowRight' || event.code === 'ArrowRight')
+      const isCtrlC =
+        event.ctrlKey &&
+        (event.key?.toLowerCase() === 'c' || event.code === 'KeyC' || event.code === 'KeyC')
 
-      if (!isSpace && !isEscape && !isSkip) {
+      if (!isSpace && !isCtrlC) {
         return
       }
 
-      if (isEscape) {
-        handleConfirmCancel()
+      if (isCtrlC) {
+        event.preventDefault()
         return
       }
 
@@ -95,7 +96,7 @@ export const CountdownTimer: React.FC<{
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [handleConfirmCancel, handlePause])
+  }, [handlePause])
 
   return (
     <div

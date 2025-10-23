@@ -8,7 +8,7 @@ import { CircleQuestionMarkIcon, PlayIcon, RotateCcwIcon } from 'lucide-react'
 import React from 'react'
 import { TimerLayout } from './timer-layout'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
-import { timeToStr } from '@/lib/time'
+import { timeToLongStr } from '@/lib/time'
 
 const TimeButton: React.FC<{
   minutes: number
@@ -118,7 +118,7 @@ export const MainView: React.FC<{
               <div>Pause/Resume</div>
               <ShortcutText text="Space" />
               <div>Cancel</div>
-              <ShortcutText text="Esc" />
+              <ShortcutText text="Ctrl+C" />
             </div>
           </DialogContent>
         </Dialog>
@@ -126,9 +126,9 @@ export const MainView: React.FC<{
 
       <div className="flex-1 flex flex-col gap-12 px-4 pt-10">
         <div className="text-center">
-          <span className="text-xl">Total </span>
-          <span className="text-3xl">{timeToStr(totalMinutes * 60)}</span>
-          <Button size="icon" variant="ghost" onClick={() => onReset()}>
+          <span className="text-lg">Total: </span>
+          <span className="text-2xl">{timeToLongStr(totalMinutes * 60)}</span>
+          <Button size="icon" variant="ghost" onClick={() => onReset()} className="ml-4">
             <RotateCcwIcon className="size-4" />
           </Button>
         </div>
