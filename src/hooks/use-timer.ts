@@ -72,6 +72,11 @@ export function useTimer() {
     setRemainingSeconds(seconds)
   }
 
+  //　合計時間をリセット
+  const reset = () => {
+    setTotalMinutes(0)
+  }
+
   return {
     view,
     totalMinutes,
@@ -84,5 +89,6 @@ export function useTimer() {
     cancel,
     complete,
     updateRemainingSeconds,
+    reset,
   }
 }

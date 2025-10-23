@@ -28,7 +28,7 @@ function App() {
     )
   }
 
-  return <MainView totalMinutes={timer.totalMinutes} onStart={timer.start} />
+  return <MainView totalMinutes={timer.totalMinutes} onStart={timer.start} onReset={timer.reset} />
 }
 
 export default App

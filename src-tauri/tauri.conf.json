@@ -13,8 +13,10 @@
     "windows": [
       {
         "title": "hibi-timer",
-        "width": 800,
-        "height": 600
+        "width": 448,
+        "height": 400,
+        "maxWidth": 448,
+        "maxHeight": 400
       }
     ],
     "security": {

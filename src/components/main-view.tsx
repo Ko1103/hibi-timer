@@ -4,10 +4,9 @@ import { ShortcutText } from './shortcut-text'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { CircleQuestionMarkIcon, PlayIcon } from 'lucide-react'
+import { CircleQuestionMarkIcon, PlayIcon, RotateCcwIcon } from 'lucide-react'
 import React from 'react'
 import { TimerLayout } from './timer-layout'
-import { TimerFooter } from './timer-footer'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
 
 const TimeButton: React.FC<{
@@ -42,7 +41,8 @@ const TimeButton: React.FC<{
 export const MainView: React.FC<{
   totalMinutes: number
   onStart: (minutes: number, mode: 'focus' | 'rest') => void
-}> = ({ totalMinutes, onStart }) => {
+  onReset: () => void
+}> = ({ totalMinutes, onStart, onReset }) => {
   const totalHours = Math.floor(totalMinutes / 60)
   const remainingMinutes = totalMinutes % 60
   const formattedHours = totalHours.toString().padStart(2, '0')
@@ -129,7 +129,17 @@ export const MainView: React.FC<{
           </DialogContent>
         </Dialog>
       </div>
-      <div className="flex-1 flex flex-col justify-center gap-6 px-4">
+
+      <div className="flex-1 flex flex-col gap-12 px-4 pt-10">
+        <div className="flex items-center justify-center gap-2">
+          <span className="text-3xl">Total </span>
+          <span className="text-3xl font-mono font-semibold">
+            {formattedHours}:{formattedMinutes}
+          </span>
+          <Button size="icon" variant="ghost" onClick={() => onReset()}>
+            <RotateCcwIcon className="size-4" />
+          </Button>
+        </div>
         <div className="grid grid-cols-4 gap-4 w-8/10 mx-auto">
           <TimeButton
             minutes={5}
@@ -158,13 +168,6 @@ export const MainView: React.FC<{
           />
         </div>
       </div>
-
-      <TimerFooter className="flex justify-between text-muted-foreground">
-        {/* 何時間何分 */}
-        <div>
-          {formattedHours} : {formattedMinutes}
-        </div>
-      </TimerFooter>
     </TimerLayout>
   )
 }
