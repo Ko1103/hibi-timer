@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { CircleDotIcon, CoffeeIcon, PauseIcon, PlayIcon, XIcon } from 'lucide-react'
 import React, { useCallback, useEffect } from 'react'
 import { ShortcutText } from './shortcut-text'
+import { timeToStr } from '@/lib/time'
 
 const noop = () => {}
 
@@ -18,6 +19,7 @@ export const CountdownTimer: React.FC<{
   onComplete: () => void
   onCancel: () => void
   updateRemainingSeconds: (seconds: number) => void
+  totalMinutes: number
 }> = ({
   view,
   isRunning,
@@ -27,6 +29,7 @@ export const CountdownTimer: React.FC<{
   onComplete,
   onCancel,
   updateRemainingSeconds,
+  totalMinutes,
 }) => {
   const isFocus = view === 'focus'
 
@@ -105,8 +108,8 @@ export const CountdownTimer: React.FC<{
   return (
     <div
       className={cn(
-        'flex min-h-screen max-h-screen w-full flex-col',
-        isFocus ? 'bg-muted text-muted-foreground' : 'bg-emerald-500 text-white'
+        'min-h-screen max-h-screen w-full flex flex-col',
+        isFocus ? 'bg-background text-muted-foreground' : 'bg-emerald-500 text-white'
       )}
     >
       {/* ヘッダー */}
@@ -114,7 +117,6 @@ export const CountdownTimer: React.FC<{
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              size="icon"
               variant="ghost"
               className={cn(
                 'text-muted-foreground rounded-full ',
@@ -129,31 +131,10 @@ export const CountdownTimer: React.FC<{
             Cancel <ShortcutText text="Esc" />
           </TooltipContent>
         </Tooltip>
-
-        {/* {timer.mode === 'rest' && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className={cn(
-                  'rounded-full text-muted-foreground',
-                  isFocus ? 'text-muted-foreground' : 'text-muted'
-                )}
-                onClick={handleSkip}
-              >
-                <SkipForwardIcon className="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              Skip <ShortcutText text="⌘ + →" />
-            </TooltipContent>
-          </Tooltip>
-        )} */}
       </div>
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="flex min-h-full flex-col items-center justify-center gap-4 px-4 py-6">
+      <main className="flex-1">
+        <div className="flex flex-col gap-4 px-4 mt-15">
           <div
             className={cn(
               'flex items-center justify-center gap-2 text-center text-lg text-muted-foreground',
@@ -203,7 +184,9 @@ export const CountdownTimer: React.FC<{
         </div>
       </main>
 
-      <footer className="w-full px-3 py-2"></footer>
+      <footer className="w-full px-3 py-2">
+        <span className="text-sm">Total: {timeToStr(totalMinutes * 60)}</span>
+      </footer>
     </div>
   )
 }

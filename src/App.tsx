@@ -5,6 +5,7 @@ import { MainView } from './components/main-view'
 import { formatTime } from './lib/time'
 import { useEffect } from 'react'
 import { setTrayTitle } from './lib/tray'
+import { CompleteView } from './components/complete-view'
 
 function App() {
   const timer = useTimer()
@@ -16,6 +17,7 @@ function App() {
   if (timer.view === 'focus' || timer.view === 'rest') {
     return (
       <CountdownTimer
+        totalMinutes={timer.totalMinutes}
         view={timer.view}
         isRunning={timer.running}
         remainingSeconds={timer.remainingSeconds}
@@ -28,7 +30,18 @@ function App() {
     )
   }
 
-  return <MainView totalMinutes={timer.totalMinutes} onStart={timer.start} />
+  if (timer.view === 'complete') {
+    return (
+      <CompleteView
+        completedMinutes={timer.lastCompletedMinutes}
+        totalMinutes={timer.totalMinutes}
+        onClickRest={timer.takeABreak}
+        onClickContinue={timer.keepWorking}
+      />
+    )
+  }
+
+  return <MainView totalMinutes={timer.totalMinutes} onStart={timer.start} onReset={timer.reset} />
 }
 
 export default App

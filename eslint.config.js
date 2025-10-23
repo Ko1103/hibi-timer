@@ -35,6 +35,7 @@ export default [
       ...react.configs.recommended.rules,
       'react/react-in-jsx-scope': 'off', // Next.js用
       'prettier/prettier': 'error',
+      'react/prop-types': 'off',
     },
   },
   prettier, // Prettierを最後に読み込む（競合無効化）

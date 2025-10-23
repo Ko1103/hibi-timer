@@ -4,11 +4,11 @@ import { ShortcutText } from './shortcut-text'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { CircleQuestionMarkIcon, PlayIcon } from 'lucide-react'
+import { CircleQuestionMarkIcon, PlayIcon, RotateCcwIcon } from 'lucide-react'
 import React from 'react'
 import { TimerLayout } from './timer-layout'
-import { TimerFooter } from './timer-footer'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
+import { timeToStr } from '@/lib/time'
 
 const TimeButton: React.FC<{
   minutes: number
@@ -42,12 +42,8 @@ const TimeButton: React.FC<{
 export const MainView: React.FC<{
   totalMinutes: number
   onStart: (minutes: number, mode: 'focus' | 'rest') => void
-}> = ({ totalMinutes, onStart }) => {
-  const totalHours = Math.floor(totalMinutes / 60)
-  const remainingMinutes = totalMinutes % 60
-  const formattedHours = totalHours.toString().padStart(2, '0')
-  const formattedMinutes = remainingMinutes.toString().padStart(2, '0')
-
+  onReset: () => void
+}> = ({ totalMinutes, onStart, onReset }) => {
   // 共通のプリセット定義
   const presets: Record<string, { mode: 'focus' | 'rest'; minutes: number }[]> = React.useMemo(
     () => ({
@@ -121,15 +117,21 @@ export const MainView: React.FC<{
               <ShortcutText text="⌘ + number" />
               <div>Pause/Resume</div>
               <ShortcutText text="Space" />
-              <div>Skip</div>
-              <ShortcutText text="⌘ + →" />
               <div>Cancel</div>
               <ShortcutText text="Esc" />
             </div>
           </DialogContent>
         </Dialog>
       </div>
-      <div className="flex-1 flex flex-col justify-center gap-6 px-4">
+
+      <div className="flex-1 flex flex-col gap-12 px-4 pt-10">
+        <div className="text-center">
+          <span className="text-xl">Total </span>
+          <span className="text-3xl">{timeToStr(totalMinutes * 60)}</span>
+          <Button size="icon" variant="ghost" onClick={() => onReset()}>
+            <RotateCcwIcon className="size-4" />
+          </Button>
+        </div>
         <div className="grid grid-cols-4 gap-4 w-8/10 mx-auto">
           <TimeButton
             minutes={5}
@@ -158,13 +160,6 @@ export const MainView: React.FC<{
           />
         </div>
       </div>
-
-      <TimerFooter className="flex justify-between text-muted-foreground">
-        {/* 何時間何分 */}
-        <div>
-          {formattedHours} : {formattedMinutes}
-        </div>
-      </TimerFooter>
     </TimerLayout>
   )
 }
