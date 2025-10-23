@@ -44,7 +44,7 @@ export const CountdownTimer: React.FC<{
     }
 
     const interval = setInterval(() => {
-      updateRemainingSeconds(remainingSeconds - 60)
+      updateRemainingSeconds(remainingSeconds - 1)
     }, 1000)
 
     return () => {
