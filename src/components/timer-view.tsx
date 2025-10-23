@@ -71,16 +71,16 @@ export const CountdownTimer: React.FC<{
       }
 
       const isSpace = event.code === 'Space' || event.key === ' '
-      const isCtrlC =
-        event.ctrlKey &&
-        (event.key?.toLowerCase() === 'c' || event.code === 'KeyC' || event.code === 'KeyC')
+      const isCommandK =
+        event.metaKey && (event.key?.toLowerCase() === 'k' || event.code === 'KeyK')
 
-      if (!isSpace && !isCtrlC) {
+      if (!isSpace && !isCommandK) {
         return
       }
 
-      if (isCtrlC) {
+      if (isCommandK) {
         event.preventDefault()
+        onCancel()
         return
       }
 
@@ -121,7 +121,7 @@ export const CountdownTimer: React.FC<{
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            Cancel <ShortcutText text="Esc" />
+            Cancel <ShortcutText text="⌘ + K" />
           </TooltipContent>
         </Tooltip>
       </div>

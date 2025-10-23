@@ -21,7 +21,7 @@ const TimeButton: React.FC<{
       <TooltipTrigger asChild>
         <Button
           className={cn(
-            'text-muted bg-emerald-300 text-base size-20 flex flex-col items-center justify-center gap-1',
+            'text-white bg-emerald-300 text-base size-20 flex flex-col items-center justify-center gap-1',
             className
           )}
           onClick={onClick}
@@ -118,7 +118,7 @@ export const MainView: React.FC<{
               <div>Pause/Resume</div>
               <ShortcutText text="Space" />
               <div>Cancel</div>
-              <ShortcutText text="Ctrl+C" />
+              <ShortcutText text="⌘ + ." />
             </div>
           </DialogContent>
         </Dialog>
@@ -128,9 +128,14 @@ export const MainView: React.FC<{
         <div className="text-center">
           <span className="text-lg">Total: </span>
           <span className="text-2xl">{timeToLongStr(totalMinutes * 60)}</span>
-          <Button size="icon" variant="ghost" onClick={() => onReset()} className="ml-4">
-            <RotateCcwIcon className="size-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button size="icon" variant="ghost" onClick={() => onReset()} className="ml-4">
+                <RotateCcwIcon className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Reset</TooltipContent>
+          </Tooltip>
         </div>
         <div className="grid grid-cols-4 gap-4 w-8/10 mx-auto">
           <TimeButton
