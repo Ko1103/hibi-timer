@@ -32,7 +32,13 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "signingIdentity": "Developer ID Application: Ko Yamaura (9886BK756P)"
+      "signingIdentity": "Developer ID Application: Ko Yamaura (9886BK756P)",
+      "dmg": {
+        "windowSize": {
+          "width": 448,
+          "height": 400
+        }
+      }
     },
     "windows": {
       "nsis": {
