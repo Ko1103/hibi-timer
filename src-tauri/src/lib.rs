@@ -1,10 +1,12 @@
+mod updater;
+
+use crate::updater::update;
 use tauri::{
-    Manager,
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    State,
+    Manager, State,
 };
 
-struct AppTray{
+struct AppTray {
     _tray: tauri::tray::TrayIcon,
 }
 
@@ -32,7 +34,14 @@ fn show_window(app_handle: tauri::AppHandle) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(err) = update(handle).await {
+                    eprintln!("failed to run updater: {err}");
+                }
+            });
             let tray = TrayIconBuilder::new()
                 .on_tray_icon_event(|tray, event| match event {
                     TrayIconEvent::Click {
