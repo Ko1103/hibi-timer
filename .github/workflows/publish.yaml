@@ -31,10 +31,6 @@ jobs:
             target: windows
             arch: x86_64
     runs-on: ${{ matrix.platform }}
-    outputs:
-      version: ${{ steps.read_version.outputs.value }}
-      artifact-paths: ${{ steps.tauri.outputs.artifactPaths }}
-      artifact-files: ${{ steps.collect_artifacts.outputs.files }}
 
     env:
       APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
@@ -61,15 +57,14 @@ jobs:
         with:
           workspaces: "./src-tauri -> target"
 
-      - name: Install frontend deps
-        run: npm ci
-
       - name: Read app version
-        id: read_version
         shell: bash
         run: |
-          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
-          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+          VERSION=$(jq -r '.version' src-tauri/tauri.conf.json)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Install frontend deps
+        run: npm ci
 
       # --- macOS: 証明書をキーチェーンに取り込み（署名用） ---
       - name: Import Apple Developer Certificate
@@ -139,45 +134,13 @@ jobs:
           releaseBody: "Assets からダウンロードしてください。"
           releaseDraft: true
           prerelease: false
-
-      - name: Collect artifacts
-        if: steps.tauri.outputs.artifactPaths != ''
-        id: collect_artifacts
-        shell: bash
-        env:
-          ARTIFACT_PATHS: ${{ steps.tauri.outputs.artifactPaths }}
-        run: |
-          node <<'NODE'
-          const fs = require('fs');
-          const path = require('path');
-          const dest = path.resolve('release-artifacts');
-          fs.mkdirSync(dest, { recursive: true });
-          const inputs = (process.env.ARTIFACT_PATHS || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-          const copied = [];
-          for (const src of inputs) {
-            const fileName = path.basename(src);
-            fs.copyFileSync(src, path.join(dest, fileName));
-            copied.push(fileName);
-            console.log(`Copied ${src} -> ${path.join('release-artifacts', fileName)}`);
-          }
-          if (copied.length === 0) {
-            console.log('No artifacts copied.');
-          }
-          if (process.env.GITHUB_OUTPUT) {
-            fs.appendFileSync(
-              process.env.GITHUB_OUTPUT,
-              `files<<EOF\n${copied.join('\n')}\nEOF\n`
-            );
-          }
-          NODE
-
-      - name: Upload matrix artifacts
-        if: steps.tauri.outputs.artifactPaths != ''
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: tauri-${{ matrix.target }}-${{ matrix.arch }}
-          path: release-artifacts/*
-          if-no-files-found: error
+          name: artifacts
+          path: ${{ steps.tauri.outputs.artifactPaths }}
+    outputs:
+      version: ${{ env.VERSION }}
 
   publish-tauri: # Upload artifacts to AWS S3
     runs-on: ubuntu-latest
@@ -187,62 +150,22 @@ jobs:
     env:
       AWS_REGION: ${{ secrets.AWS_REGION }}
       AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
-      TAURI_VERSION: ${{ needs.build-tauri.outputs.version }}
+      AWS_S3_PREFIX: ${{ secrets.AWS_S3_PREFIX }}
+      APP_VERSION: ${{ needs.build-tauri.outputs.version }}
       ARTIFACT_PATHS: ${{ needs.build-tauri.outputs.artifact-paths }}
-      ARTIFACT_FILES: ${{ needs.build-tauri.outputs.artifact-files }}
     steps:
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
+      - name: Download math result for job 1
+        uses: actions/download-artifact@v5
         with:
-          path: artifacts
-
+          name: artifacts
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-
-      - name: Upload artifacts to S3
+      - name: Upload artifacts
         shell: bash
         run: |
-          if [ -z "$ARTIFACT_FILES" ]; then
-            echo "No artifact files to upload."
-            exit 0
-          fi
-          python <<'PY'
-          import os
-          import subprocess
-          import sys
-          from pathlib import Path
-
-          bucket = os.environ.get('AWS_S3_BUCKET')
-          version = os.environ.get('TAURI_VERSION')
-          artifact_files = [line.strip() for line in os.environ.get('ARTIFACT_FILES', '').splitlines() if line.strip()]
-          if not bucket:
-            print('::error::AWS_S3_BUCKET is not set.')
-            sys.exit(1)
-          if not version:
-            print('::error::TAURI_VERSION is not set.')
-            sys.exit(1)
-          if not artifact_files:
-            print('No artifact files provided; nothing to upload.')
-            sys.exit(0)
-
-          base_dir = Path('artifacts')
-          if not base_dir.exists():
-            print(f'::error::{base_dir} does not exist.')
-            sys.exit(1)
-
-          for name in artifact_files:
-            matches = list(base_dir.rglob(name))
-            if not matches:
-              print(f'::error::Artifact {name} not found under {base_dir}')
-              sys.exit(1)
-            artifact_path = str(matches[0])
-            for prefix in (f'releases/latest', f'releases/{version}'):
-              dest = f's3://{bucket}/{prefix}/{name}'
-              print(f'Uploading {artifact_path} -> {dest}')
-              subprocess.run(['aws', 's3', 'cp', artifact_path, dest, '--only-show-errors'], check=True)
-
-          PY
+          aws s3 cp artifacts s3://${{ secrets.AWS_S3_BUCKET }}/${{ secrets.AWS_S3_PREFIX }}/latest --recursive
+          aws s3 cp artifacts s3://${{ secrets.AWS_S3_BUCKET }}/${{ secrets.AWS_S3_PREFIX }}/${{ env.APP_VERSION }} --recursive
