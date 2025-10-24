@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  publish-tauri:
+  build-tauri:
     permissions:
       contents: write
     strategy:
@@ -20,10 +20,16 @@ jobs:
         include:
           - platform: macos-latest
             args: "--target aarch64-apple-darwin"
+            target: darwin
+            arch: aarch64
           - platform: macos-latest
             args: "--target x86_64-apple-darwin"
+            target: darwin
+            arch: x86_64
           - platform: windows-latest
             args: "" # 既定の x86_64-pc-windows-msvc をビルド
+            target: windows
+            arch: x86_64
     runs-on: ${{ matrix.platform }}
 
     env:
@@ -50,6 +56,12 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
+
+      - name: Read app version
+        shell: bash
+        run: |
+          VERSION=$(jq -r '.version' src-tauri/tauri.conf.json)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Install frontend deps
         run: npm ci
@@ -100,6 +112,7 @@ jobs:
 
       # --- ビルド＆リリース作成＆アセットアップロード（公式 tauri-action） ---
       - name: Build & Release
+        id: tauri
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -121,3 +134,38 @@ jobs:
           releaseBody: "Assets からダウンロードしてください。"
           releaseDraft: true
           prerelease: false
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts
+          path: ${{ steps.tauri.outputs.artifactPaths }}
+    outputs:
+      version: ${{ env.VERSION }}
+
+  publish-tauri: # Upload artifacts to AWS S3
+    runs-on: ubuntu-latest
+    needs: build-tauri
+    permissions:
+      contents: read
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+      AWS_S3_PREFIX: ${{ secrets.AWS_S3_PREFIX }}
+      APP_VERSION: ${{ needs.build-tauri.outputs.version }}
+      ARTIFACT_PATHS: ${{ needs.build-tauri.outputs.artifact-paths }}
+    steps:
+      - name: Download math result for job 1
+        uses: actions/download-artifact@v5
+        with:
+          name: artifacts
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Upload artifacts
+        shell: bash
+        run: |
+          aws s3 cp artifacts s3://${{ secrets.AWS_S3_BUCKET }}/${{ secrets.AWS_S3_PREFIX }}/latest --recursive
+          aws s3 cp artifacts s3://${{ secrets.AWS_S3_BUCKET }}/${{ secrets.AWS_S3_PREFIX }}/${{ env.APP_VERSION }} --recursive
