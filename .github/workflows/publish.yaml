@@ -134,13 +134,74 @@ jobs:
           releaseBody: "Assets からダウンロードしてください。"
           releaseDraft: true
           prerelease: false
+      - name: Collect artifact paths
+        id: artifact_list
+        shell: bash
+        env:
+          TAURI_ARTIFACTS_JSON: ${{ steps.tauri.outputs.artifactPaths }}
+        run: |
+          set -euo pipefail
+          ARTIFACT_DIR="artifacts/${{ matrix.target }}-${{ matrix.arch }}"
+          rm -rf "$ARTIFACT_DIR"
+          mkdir -p "$ARTIFACT_DIR"
+          export ARTIFACT_DIR
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+
+          const raw = process.env.TAURI_ARTIFACTS_JSON ?? '[]';
+          let paths;
+          try {
+            paths = JSON.parse(raw);
+          } catch (error) {
+            console.error('artifactPaths JSON parse error');
+            console.error(raw);
+            throw error;
+          }
+          if (!Array.isArray(paths)) {
+            console.error('artifactPaths output is not an array');
+            process.exit(1);
+          }
+
+          const destDir = process.env.ARTIFACT_DIR;
+          const ensureCopy = (input) => {
+            if (!input) return;
+            if (!fs.existsSync(input)) {
+              console.warn(`Skipping missing artifact: ${input}`);
+              return;
+            }
+            const dest = path.join(destDir, path.basename(input));
+            fs.cpSync(input, dest, { recursive: true });
+            console.log(`Copied ${input} -> ${dest}`);
+          };
+
+          const extras = [];
+
+          for (const entry of paths) {
+            if (!entry) continue;
+            ensureCopy(entry);
+
+            const tar = `${entry}.tar.gz`;
+            const sig = `${tar}.sig`;
+
+            if (fs.existsSync(tar)) extras.push(tar);
+            if (fs.existsSync(sig)) extras.push(sig);
+          }
+
+          for (const extra of extras) {
+            ensureCopy(extra);
+          }
+          NODE
+          printf 'paths=%s\n' "$ARTIFACT_DIR" >> "$GITHUB_OUTPUT"
       - name: Upload artifacts
+        if: steps.artifact_list.outputs.paths != ''
         uses: actions/upload-artifact@v4
         with:
-          name: artifacts
-          path: ${{ steps.tauri.outputs.artifactPaths }}
+          name: hibi-${{ matrix.target }}-${{ matrix.arch }}
+          path: ${{ steps.artifact_list.outputs.paths }}
     outputs:
       version: ${{ env.VERSION }}
+      artifact-paths: ${{ steps.artifact_list.outputs.paths }}
 
   publish-tauri: # Upload artifacts to AWS S3
     runs-on: ubuntu-latest
@@ -152,12 +213,13 @@ jobs:
       AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
       AWS_S3_PREFIX: ${{ secrets.AWS_S3_PREFIX }}
       APP_VERSION: ${{ needs.build-tauri.outputs.version }}
-      ARTIFACT_PATHS: ${{ needs.build-tauri.outputs.artifact-paths }}
     steps:
-      - name: Download math result for job 1
+      - name: Download build artifacts
         uses: actions/download-artifact@v5
         with:
-          name: artifacts
+          pattern: hibi-*
+          merge-multiple: true
+          path: artifacts
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
