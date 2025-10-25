@@ -229,5 +229,5 @@ jobs:
       - name: Upload artifacts
         shell: bash
         run: |
-          aws s3 cp artifacts s3://${{ secrets.AWS_S3_BUCKET }}/${{ secrets.AWS_S3_PREFIX }}/latest --recursive
+          aws s3 sync artifacts s3://${{ secrets.AWS_S3_BUCKET }}/${{ secrets.AWS_S3_PREFIX }}/latest --delete
           aws s3 cp artifacts s3://${{ secrets.AWS_S3_BUCKET }}/${{ secrets.AWS_S3_PREFIX }}/${{ env.APP_VERSION }} --recursive
