@@ -111,7 +111,7 @@ jobs:
           Import-PfxCertificate -FilePath certificate\codesign.pfx -CertStoreLocation Cert:\CurrentUser\My -Password $sec | Out-Null
 
       # --- ビルド＆リリース作成＆アセットアップロード（公式 tauri-action） ---
-      - name: Build & Release
+      - name: Build
         id: tauri
         uses: tauri-apps/tauri-action@v0
         env:
@@ -134,6 +134,7 @@ jobs:
         shell: bash
         env:
           TAURI_ARTIFACTS_JSON: ${{ steps.tauri.outputs.artifactPaths }}
+          MATRIX_ARCH: ${{ matrix.arch }}
         run: |
           set -euo pipefail
           ARTIFACT_DIR="artifacts/${{ matrix.target }}-${{ matrix.arch }}"
@@ -159,13 +160,25 @@ jobs:
           }
 
           const destDir = process.env.ARTIFACT_DIR;
+          const arch = (process.env.MATRIX_ARCH || '').trim();
+
+          const withArchSuffix = (fileName) => {
+            if (!arch) return fileName;
+            if (fileName.includes(`_${arch}`)) return fileName;
+            const dotIndex = fileName.indexOf('.');
+            if (dotIndex === -1) return `${fileName}_${arch}`;
+            return `${fileName.slice(0, dotIndex)}_${arch}${fileName.slice(dotIndex)}`;
+          };
+
           const ensureCopy = (input) => {
             if (!input) return;
             if (!fs.existsSync(input)) {
               console.warn(`Skipping missing artifact: ${input}`);
               return;
             }
-            const dest = path.join(destDir, path.basename(input));
+            const baseName = path.basename(input);
+            const renamed = withArchSuffix(baseName);
+            const dest = path.join(destDir, renamed);
             fs.cpSync(input, dest, { recursive: true });
             console.log(`Copied ${input} -> ${dest}`);
           };
@@ -243,14 +256,13 @@ jobs:
             process.exit(1);
           }
 
-          const ensureDir = (dir) => {
-            if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) {
-              console.error(`Missing artifact directory: ${dir}`);
-              process.exit(1);
-            }
-          };
+          if (!fs.existsSync(artifactsRoot) || !fs.statSync(artifactsRoot).isDirectory()) {
+            console.error(`Missing artifact directory: ${artifactsRoot}`);
+            process.exit(1);
+          }
 
-          const readSignature = (filePath) => {
+          const readSignature = (artifactName) => {
+            const filePath = path.join(artifactsRoot, `${artifactName}.sig`);
             if (!fs.existsSync(filePath)) {
               console.error(`Missing signature file: ${filePath}`);
               process.exit(1);
@@ -258,30 +270,50 @@ jobs:
             return fs.readFileSync(filePath, 'utf8').trim();
           };
 
-          const findFileByExt = (dir, preferredExts) => {
-            const entries = fs.readdirSync(dir);
-            for (const ext of preferredExts) {
-              const file = entries.find((entry) => entry.endsWith(ext));
+          const findFileByExt = (preferredExts, arch, targetHint) => {
+            const entries = fs
+              .readdirSync(artifactsRoot)
+              .filter((entry) => !entry.endsWith('.sig'));
+
+            const matchesArch = (file) => !arch || file.includes(`_${arch}`);
+            const matchesTarget = (file) => !targetHint || file.toLowerCase().includes(targetHint.toLowerCase());
+
+            const pick = (candidates) => {
+              for (const ext of preferredExts) {
+                const file = candidates.find((entry) => entry.endsWith(ext));
+                if (file) return file;
+              }
+              return null;
+            };
+
+            const attempts = [
+              entries.filter((entry) => matchesArch(entry) && matchesTarget(entry)),
+              entries.filter((entry) => matchesArch(entry)),
+              entries,
+            ];
+
+            for (const candidates of attempts) {
+              const file = pick(candidates.filter(matchesTarget));
               if (file) return file;
             }
-            console.error(`No artifact found in ${dir} matching extensions: ${preferredExts.join(', ')}`);
+
+            const message = arch
+              ? `No artifact found matching arch "${arch}" with extensions: ${preferredExts.join(', ')}`
+              : `No artifact found matching extensions: ${preferredExts.join(', ')}`;
+            console.error(message);
             process.exit(1);
           };
 
-          const toUrl = (relativeDir, fileName) => {
-            const dir = relativeDir.replace(/^\/+|\/+$/g, '');
+          const toUrl = (fileName) => {
             const encoded = encodeURIComponent(fileName).replace(/%2F/g, '/');
-            return baseUrl + (dir ? `${dir}/` : '') + encoded;
+            return baseUrl + encoded;
           };
 
-          const preparePlatform = (relativeDir, preferredExts) => {
-            const dir = path.join(artifactsRoot, relativeDir);
-            ensureDir(dir);
-            const artifact = findFileByExt(dir, preferredExts);
-            const sigPath = path.join(dir, `${artifact}.sig`);
-            const signature = readSignature(sigPath);
+          const preparePlatform = (preferredExts, arch, targetHint) => {
+            const artifact = findFileByExt(preferredExts, arch, targetHint);
+            const signature = readSignature(artifact);
             return {
-              url: toUrl(relativeDir, artifact),
+              url: toUrl(artifact),
               signature,
             };
           };
@@ -290,9 +322,9 @@ jobs:
             version,
             notes: 'Hibi timer',
             platforms: {
-              'windows-x86_64': preparePlatform('windows-x86_64', ['.msi', '-setup.exe', '.exe']),
-              'darwin-x86_64': preparePlatform('darwin-x86_64', ['.app.tar.gz']),
-              'darwin-aarch64': preparePlatform('darwin-aarch64', ['.app.tar.gz']),
+              'windows-x86_64': preparePlatform(['.msi', '-setup.exe', '.exe'], 'x86_64', 'windows'),
+              'darwin-x86_64': preparePlatform(['.app.tar.gz'], 'x86_64', 'darwin'),
+              'darwin-aarch64': preparePlatform(['.app.tar.gz'], 'aarch64', 'darwin'),
             },
           };
 
