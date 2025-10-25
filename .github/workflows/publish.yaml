@@ -134,6 +134,7 @@ jobs:
           releaseBody: "Assets からダウンロードしてください。"
           releaseDraft: true
           prerelease: false
+          includeUpdaterJson: true
       - name: Collect artifact paths
         id: artifact_list
         shell: bash
