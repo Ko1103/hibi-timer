@@ -222,6 +222,14 @@ jobs:
       AWS_S3_PREFIX: ${{ secrets.AWS_S3_PREFIX }}
       APP_VERSION: ${{ needs.build-tauri.outputs.version }}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
       - name: Download build artifacts
         uses: actions/download-artifact@v5
         with:
