@@ -176,7 +176,7 @@ jobs:
             console.log(`Copied ${input} -> ${dest}`);
           };
 
-          const extras = new Set();
+          const extras = [];
 
           for (const entry of paths) {
             if (!entry) continue;
@@ -185,14 +185,8 @@ jobs:
             const tar = `${entry}.tar.gz`;
             const sig = `${tar}.sig`;
 
-            if (fs.existsSync(tar)) extras.add(tar);
-            if (fs.existsSync(sig)) extras.add(sig);
-
-            const latest = path.join(path.dirname(entry), 'latest.json');
-            const latestSig = `${latest}.sig`;
-
-            if (fs.existsSync(latest)) extras.add(latest);
-            if (fs.existsSync(latestSig)) extras.add(latestSig);
+            if (fs.existsSync(tar)) extras.push(tar);
+            if (fs.existsSync(sig)) extras.push(sig);
           }
 
           for (const extra of extras) {
