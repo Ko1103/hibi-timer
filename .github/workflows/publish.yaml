@@ -129,12 +129,6 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
           args: ${{ matrix.args }}
-          tagName: app-v__VERSION__
-          releaseName: "HibiFocus v__VERSION__"
-          releaseBody: "Assets からダウンロードしてください。"
-          releaseDraft: true
-          prerelease: false
-          includeUpdaterJson: true
       - name: Collect artifact paths
         id: artifact_list
         shell: bash
@@ -227,6 +221,85 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
+      - name: create latest.json file
+        shell: bash
+        env:
+          RELEASE_HOST: https://hibi-timer-release.ko-yamaura.com
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+
+          const host = (process.env.RELEASE_HOST || '').replace(/\/+$/, '');
+          const prefixRaw = process.env.AWS_S3_PREFIX || '';
+          const prefix = prefixRaw.replace(/^\/+|\/+$/g, '');
+          const baseUrl = [host, prefix, 'latest'].filter(Boolean).join('/') + '/';
+          const artifactsRoot = path.resolve('artifacts');
+          const version = process.env.APP_VERSION;
+
+          if (!version) {
+            console.error('APP_VERSION is required');
+            process.exit(1);
+          }
+
+          const ensureDir = (dir) => {
+            if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) {
+              console.error(`Missing artifact directory: ${dir}`);
+              process.exit(1);
+            }
+          };
+
+          const readSignature = (filePath) => {
+            if (!fs.existsSync(filePath)) {
+              console.error(`Missing signature file: ${filePath}`);
+              process.exit(1);
+            }
+            return fs.readFileSync(filePath, 'utf8').trim();
+          };
+
+          const findFileByExt = (dir, preferredExts) => {
+            const entries = fs.readdirSync(dir);
+            for (const ext of preferredExts) {
+              const file = entries.find((entry) => entry.endsWith(ext));
+              if (file) return file;
+            }
+            console.error(`No artifact found in ${dir} matching extensions: ${preferredExts.join(', ')}`);
+            process.exit(1);
+          };
+
+          const toUrl = (relativeDir, fileName) => {
+            const dir = relativeDir.replace(/^\/+|\/+$/g, '');
+            const encoded = encodeURIComponent(fileName).replace(/%2F/g, '/');
+            return baseUrl + (dir ? `${dir}/` : '') + encoded;
+          };
+
+          const preparePlatform = (relativeDir, preferredExts) => {
+            const dir = path.join(artifactsRoot, relativeDir);
+            ensureDir(dir);
+            const artifact = findFileByExt(dir, preferredExts);
+            const sigPath = path.join(dir, `${artifact}.sig`);
+            const signature = readSignature(sigPath);
+            return {
+              url: toUrl(relativeDir, artifact),
+              signature,
+            };
+          };
+
+          const latest = {
+            version,
+            notes: 'Hibi timer',
+            platforms: {
+              'windows-x86_64': preparePlatform('windows-x86_64', ['.msi', '-setup.exe', '.exe']),
+              'darwin-x86_64': preparePlatform('darwin-x86_64', ['.app.tar.gz']),
+              'darwin-aarch64': preparePlatform('darwin-aarch64', ['.app.tar.gz']),
+            },
+          };
+
+          const outputPath = path.join(artifactsRoot, 'latest.json');
+          fs.writeFileSync(outputPath, JSON.stringify(latest, null, 2));
+          console.log(`latest.json created at ${outputPath}`);
+          NODE
       - name: Upload artifacts
         shell: bash
         run: |
